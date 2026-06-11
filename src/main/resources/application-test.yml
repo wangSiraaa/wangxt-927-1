@@ -1,0 +1,37 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:clinic_followup;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+followup:
+  escalation:
+    threshold: 3
+  reminder:
+    default-days: 7
+  risk:
+    high-interval: 3
+    medium-interval: 7
+    low-interval: 14
+
+logging:
+  level:
+    com.clinic.followup: INFO
+    org.springframework.web: INFO

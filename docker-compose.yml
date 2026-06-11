@@ -1,0 +1,45 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: followup-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: followup
+      MYSQL_USER: followup
+      MYSQL_PASSWORD: followup123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ufollowup", "-pfollowup123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - followup-network
+
+  backend:
+    build: .
+    container_name: followup-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/followup?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: followup
+      SPRING_DATASOURCE_PASSWORD: followup123
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - followup-network
+
+volumes:
+  mysql-data:
+
+networks:
+  followup-network:
+    driver: bridge

@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>诊所复诊随访系统</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; }
+        .app { display: flex; min-height: 100vh; }
+        .sidebar { width: 220px; background: #1f2937; color: white; padding: 20px 0; }
+        .sidebar h1 { font-size: 18px; padding: 0 20px 20px; border-bottom: 1px solid #374151; }
+        .nav-item { padding: 12px 20px; cursor: pointer; transition: background 0.2s; }
+        .nav-item:hover { background: #374151; }
+        .nav-item.active { background: #3b82f6; }
+        .main { flex: 1; padding: 30px; }
+        .page-header { margin-bottom: 20px; }
+        .page-header h2 { color: #1f2937; margin-bottom: 8px; }
+        .page-header p { color: #6b7280; font-size: 14px; }
+        .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-secondary { background: #6b7280; color: white; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; color: #374151; font-weight: 500; font-size: 14px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        table th, table td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+        table th { background: #f9fafb; color: #374151; font-weight: 600; }
+        table tr:hover { background: #f9fafb; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .badge-active { background: #dbeafe; color: #1d4ed8; }
+        .badge-escalated { background: #fee2e2; color: #b91c1c; }
+        .badge-completed { background: #d1fae5; color: #047857; }
+        .badge-closed { background: #e5e7eb; color: #374151; }
+        .badge-high { background: #fee2e2; color: #b91c1c; }
+        .badge-medium { background: #fef3c7; color: #92400e; }
+        .badge-low { background: #dbeafe; color: #1d4ed8; }
+        .alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
+        .alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .alert-success { background: #f0fdf4; color: #047857; border: 1px solid #bbf7d0; }
+        .alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal { background: white; border-radius: 8px; padding: 24px; width: 600px; max-width: 90%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h3 { color: #1f2937; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+        .empty-state { text-align: center; padding: 40px; color: #9ca3af; }
+        .tag { display: inline-block; padding: 2px 8px; background: #f3f4f6; border-radius: 4px; font-size: 12px; color: #4b5563; margin-right: 4px; }
+        .patient-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 8px; margin-bottom: 20px; }
+        .patient-card h3 { font-size: 24px; margin-bottom: 8px; }
+        .patient-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; }
+        .patient-info div h4 { font-size: 12px; opacity: 0.8; margin-bottom: 4px; }
+        .patient-info div p { font-size: 16px; font-weight: 500; }
+        .next-visit { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 4px; margin-bottom: 20px; }
+        .next-visit h4 { color: #92400e; margin-bottom: 8px; }
+        .next-visit .date { font-size: 24px; font-weight: bold; color: #78350f; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; }
+        .checkbox-group input { width: auto; }
+        .actions { display: flex; gap: 8px; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .status-dot.active { background: #10b981; }
+        .status-dot.escalated { background: #ef4444; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="app">
+            <div class="sidebar">
+                <h1>🏥 复诊随访系统</h1>
+                <div class="nav-item" :class="{active: currentPage === 'plans'}" @click="currentPage = 'plans'">
+                    📋 随访计划管理
+                </div>
+                <div class="nav-item" :class="{active: currentPage === 'records'}" @click="currentPage = 'records'">
+                    📞 随访记录
+                </div>
+                <div class="nav-item" :class="{active: currentPage === 'reminders'}" @click="currentPage = 'reminders'">
+                    ⏰ 随访提醒
+                </div>
+                <div class="nav-item" :class="{active: currentPage === 'escalations'}" @click="currentPage = 'escalations'">
+                    ⚠️ 升级处理
+                </div>
+                <div class="nav-item" :class="{active: currentPage === 'patient'}" @click="currentPage = 'patient'">
+                    👤 患者查询
+                </div>
+            </div>
+
+            <div class="main">
+                <div v-if="alertMessage" :class="['alert', 'alert-' + alertType]">
+                    {{ alertMessage }}
+                </div>
+
+                <div v-if="currentPage === 'plans'">
+                    <div class="page-header">
+                        <h2>📋 随访计划管理</h2>
+                        <p>管理患者的出院随访计划，设置风险等级和随访间隔</p>
+                    </div>
+
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3>随访计划列表</h3>
+                            <button class="btn btn-primary" @click="showCreatePlanModal = true">
+                                + 新建随访计划
+                            </button>
+                        </div>
+
+                        <div class="form-row" style="margin-bottom: 16px;">
+                            <div class="form-group">
+                                <label>搜索患者姓名/身份证号</label>
+                                <input type="text" v-model="planSearch" placeholder="输入搜索关键词">
+                            </div>
+                            <div class="form-group">
+                                <label>筛选状态</label>
+                                <select v-model="planStatusFilter">
+                                    <option value="">全部</option>
+                                    <option value="ACTIVE">进行中</option>
+                                    <option value="ESCALATED">已升级</option>
+                                    <option value="COMPLETED">已完成</option>
+                                    <option value="CLOSED">已关闭</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <table v-if="filteredPlans.length > 0">
+                            <thead>
+                                <tr>
+                                    <th>患者姓名</th>
+                                    <th>病种</th>
+                                    <th>风险等级</th>
+                                    <th>出院日期</th>
+                                    <th>转院状态</th>
+                                    <th>连续未接通</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="plan in filteredPlans" :key="plan.id">
+                                    <td>
+                                        <div><strong>{{ plan.patientName }}</strong></div>
+                                        <div style="font-size: 12px; color: #6b7280;">{{ plan.patientIdCard }}</div>
+                                    </td>
+                                    <td>{{ plan.diseaseType }}</td>
+                                    <td>
+                                        <span :class="['badge', 'badge-' + plan.riskLevel.toLowerCase()]">
+                                            {{ getRiskLevelText(plan.riskLevel) }}
+                                        </span>
+                                    </td>
+                                    <td>{{ plan.dischargeDate }}</td>
+                                    <td>
+                                        <span v-if="plan.transferStatus === 'TRANSFERRED'" class="badge badge-closed">已转院</span>
+                                        <span v-else class="badge badge-active">未转院</span>
+                                    </td>
+                                    <td>{{ plan.consecutiveMissed }}</td>
+                                    <td>
+                                        <span :class="['badge', 'badge-' + plan.status.toLowerCase()]">
+                                            <span :class="['status-dot', plan.status.toLowerCase()]"></span>
+                                            {{ getPlanStatusText(plan.status) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="actions">
+                                            <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;"
+                                                    @click="viewPlanDetail(plan)">
+                                                详情
+                                            </button>
+                                            <button class="btn btn-success" style="padding: 4px 10px; font-size: 12px;"
+                                                    @click="quickRecord(plan)"
+                                                    :disabled="plan.transferStatus === 'TRANSFERRED'">
+                                                记录
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div v-else class="empty-state">
+                            <p>暂无随访计划</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="currentPage === 'records'">
+                    <div class="page-header">
+                        <h2>📞 随访记录</h2>
+                        <p>记录电话随访结果，设置下次提醒时间</p>
+                    </div>
+
+                    <div class="card">
+                        <h3 style="margin-bottom: 20px;">新建随访记录</h3>
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label>选择随访计划 *</label>
+                                <select v-model="newRecord.planId" @change="onPlanChange">
+                                    <option value="">请选择计划</option>
+                                    <option v-for="plan in activePlans" :key="plan.id" :value="plan.id">
+                                        {{ plan.patientName }} - {{ plan.diseaseType }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>随访节点</label>
+                                <select v-model="newRecord.nodeId">
+                                    <option value="">无（手动记录）</option>
+                                    <option v-for="node in pendingNodes" :key="node.id" :value="node.id">
+                                        {{ node.description }} ({{ node.followUpDate }})
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>通话结果 *</label>
+                                <select v-model="newRecord.callResult">
+                                    <option value="">请选择</option>
+                                    <option value="CONNECTED">✅ 已接通</option>
+                                    <option value="NO_ANSWER">📵 无人接听</option>
+                                    <option value="BUSY">📶 占线</option>
+                                    <option value="WRONG_NUMBER">❌ 号码错误</option>
+                                    <option value="REFUSED">🚫 拒绝接听</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" v-if="newRecord.callResult && newRecord.callResult !== 'CONNECTED'">
+                            <label>未接通原因</label>
+                            <input type="text" v-model="newRecord.noAnswerReason" placeholder="请描述未接通原因">
+                        </div>
+
+                        <div class="form-group" v-if="newRecord.callResult === 'CONNECTED'">
+                            <label>通话内容</label>
+                            <textarea v-model="newRecord.conversationContent" rows="3" placeholder="记录通话内容..."></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>下次提醒日期</label>
+                                <input type="date" v-model="newRecord.nextReminderDate">
+                                <div v-if="dateError" style="color: #ef4444; font-size: 12px; margin-top: 4px;">
+                                    {{ dateError }}
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>下次提醒备注</label>
+                                <input type="text" v-model="newRecord.nextReminderNote" placeholder="提醒备注">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" id="needExam" v-model="newRecord.needExamReport">
+                                <label for="needExam" style="margin-bottom: 0;">是否需要带检查报告</label>
+                            </div>
+                            <div class="form-group">
+                                <label>检查报告说明</label>
+                                <input type="text" v-model="newRecord.examReportNote" placeholder="需要带哪些检查报告">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>操作人 *</label>
+                            <input type="text" v-model="newRecord.operatorName" placeholder="护士姓名">
+                        </div>
+
+                        <button class="btn btn-primary" @click="submitRecord" :disabled="!canSubmitRecord">
+                            提交随访记录
+                        </button>
+                    </div>
+
+                    <div class="card">
+                        <h3 style="margin-bottom: 20px;">最近随访记录</h3>
+                        <table v-if="recentRecords.length > 0">
+                            <thead>
+                                <tr>
+                                    <th>患者姓名</th>
+                                    <th>通话结果</th>
+                                    <th>通话时间</th>
+                                    <th>操作人</th>
+                                    <th>下次提醒</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="record in recentRecords" :key="record.id">
+                                    <td>{{ getPlanName(record.planId) }}</td>
+                                    <td>
+                                        <span :class="['badge', record.callResult === 'CONNECTED' ? 'badge-active' : 'badge-closed']">
+                                            {{ getCallResultText(record.callResult) }}
+                                        </span>
+                                    </td>
+                                    <td>{{ formatDateTime(record.createdAt) }}</td>
+                                    <td>{{ record.operatorName }}</td>
+                                    <td>{{ record.nextReminderDate || '-' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div v-else class="empty-state">
+                            <p>暂无随访记录</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="currentPage === 'reminders'">
+                    <div class="page-header">
+                        <h2>⏰ 随访提醒</h2>
+                        <p>查看今日和本周需要随访的患者</p>
+                    </div>
+
+                    <div class="card">
+                        <div style="margin-bottom: 20px;">
+                            <button class="btn btn-primary" @click="reminderFilter = 'today'" :style="{opacity: reminderFilter === 'today' ? 1 : 0.6}">
+                                今日提醒 ({{ todayReminders.length }})
+                            </button>
+                            <button class="btn btn-secondary" @click="reminderFilter = 'week'" :style="{opacity: reminderFilter === 'week' ? 1 : 0.6, marginLeft: '10px'}">
+                                本周提醒 ({{ weekReminders.length }})
+                            </button>
+                        </div>
+
+                        <div v-if="currentReminders.length > 0">
+                            <div v-for="reminder in currentReminders" :key="reminder.id" class="card" style="margin-bottom: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <div>
+                                        <h4 style="margin-bottom: 8px;">
+                                            <span class="status-dot active"></span>
+                                            {{ getPlanName(reminder.planId) }}
+                                        </h4>
+                                        <p style="color: #6b7280; font-size: 14px; margin-bottom: 4px;">
+                                            {{ getCallResultText(reminder.callResult) }} | {{ formatDateTime(reminder.createdAt) }}
+                                        </p>
+                                        <p v-if="reminder.nextReminderNote" style="color: #374151; font-size: 14px;">
+                                            📝 {{ reminder.nextReminderNote }}
+                                        </p>
+                                        <p v-if="reminder.needExamReport" style="color: #dc2626; font-size: 14px; margin-top: 4px;">
+                                            ⚠️ 需携带检查报告: {{ reminder.examReportNote }}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span class="badge badge-warning">
+                                            提醒日期: {{ reminder.nextReminderDate }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="empty-state">
+                            <p>暂无{{ reminderFilter === 'today' ? '今日' : '本周' }}提醒</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="currentPage === 'escalations'">
+                    <div class="page-header">
+                        <h2>⚠️ 升级处理</h2>
+                        <p>处理连续未联系的患者升级，医生端操作</p>
+                    </div>
+
+                    <div class="card" v-if="escalatedPlans.length > 0">
+                        <h3 style="margin-bottom: 20px;">待处理升级 ({{ escalatedPlans.length }})</h3>
+                        <div v-for="plan in escalatedPlans" :key="plan.id" class="card" style="margin-bottom: 12px; background: #fef2f2;">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div>
+                                    <h4 style="margin-bottom: 8px; color: #b91c1c;">
+                                        ⚠️ {{ plan.patientName }} - 连续未接通 {{ plan.consecutiveMissed }} 次
+                                    </h4>
+                                    <p style="color: #6b7280; font-size: 14px; margin-bottom: 4px;">
+                                        病种: {{ plan.diseaseType }} | 风险等级: {{ getRiskLevelText(plan.riskLevel) }}
+                                    </p>
+                                    <p style="color: #6b7280; font-size: 14px;">
+                                        主管医生: {{ plan.attendingDoctor }} | 负责护士: {{ plan.assignedNurse }}
+                                    </p>
+                                </div>
+                                <button class="btn btn-primary" @click="handleEscalation(plan)">
+                                    处理升级
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 style="margin-bottom: 20px;">升级历史记录</h3>
+                        <table v-if="allEscalations.length > 0">
+                            <thead>
+                                <tr>
+                                    <th>患者姓名</th>
+                                    <th>升级类型</th>
+                                    <th>升级原因</th>
+                                    <th>处理状态</th>
+                                    <th>处理结果</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="escalation in allEscalations" :key="escalation.id">
+                                    <td>{{ getPlanName(escalation.planId) }}</td>
+                                    <td>{{ escalation.escalationType }}</td>
+                                    <td>{{ escalation.reason }}</td>
+                                    <td>
+                                        <span :class="['badge', escalation.resolved ? 'badge-completed' : 'badge-escalated']">
+                                            {{ escalation.resolved ? '已处理' : '待处理' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ escalation.resolution || '-' }}</td>
+                                    <td>
+                                        <button v-if="!escalation.resolved" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;"
+                                                @click="viewEscalationDetail(escalation)">
+                                            查看
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div v-else class="empty-state">
+                            <p>暂无升级记录</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="currentPage === 'patient'">
+                    <div class="page-header">
+                        <h2>👤 患者查询</h2>
+                        <p>患者端查询随访信息和下次预约</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="form-group">
+                            <label>输入身份证号查询随访信息</label>
+                            <input type="text" v-model="patientIdCard" placeholder="请输入身份证号" style="width: 300px;">
+                            <button class="btn btn-primary" style="margin-left: 10px;" @click="queryPatient">
+                                查询
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="patientInfo">
+                        <div class="patient-card">
+                            <h3>{{ patientInfo.patientName }}</h3>
+                            <p style="opacity: 0.8;">{{ patientInfo.diseaseType }}</p>
+                            <div class="patient-info">
+                                <div>
+                                    <h4>风险等级</h4>
+                                    <p>{{ patientInfo.riskLevel }}</p>
+                                </div>
+                                <div>
+                                    <h4>出院日期</h4>
+                                    <p>{{ patientInfo.dischargeDate }}</p>
+                                </div>
+                                <div>
+                                    <h4>主管医生</h4>
+                                    <p>{{ patientInfo.attendingDoctor }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="patientInfo.nextFollowUpDate" class="next-visit">
+                            <h4>📅 下次随访预约</h4>
+                            <div class="date">{{ patientInfo.nextFollowUpDate }}</div>
+                            <p style="margin-top: 8px;">{{ patientInfo.nextFollowUpNote }}</p>
+                            <div v-if="patientInfo.needExamReport" style="margin-top: 12px; background: white; padding: 12px; border-radius: 4px;">
+                                <p style="color: #dc2626; font-weight: 500;">⚠️ 请携带以下检查报告：</p>
+                                <p style="color: #374151; margin-top: 4px;">{{ patientInfo.examReportNote || '常规检查报告' }}</p>
+                            </div>
+                        </div>
+                        <div v-else class="alert alert-warning">
+                            暂无预约的随访时间，请等待护士联系
+                        </div>
+
+                        <div v-if="patientInfo.lastContactTime" class="card">
+                            <h4 style="margin-bottom: 12px;">📞 上次联系记录</h4>
+                            <p><strong>联系时间：</strong>{{ formatDateTime(patientInfo.lastContactTime) }}</p>
+                            <p><strong>联系结果：</strong>{{ patientInfo.lastContactResult }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showCreatePlanModal" class="modal-overlay" @click.self="showCreatePlanModal = false">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>新建随访计划</h3>
+                    <button class="modal-close" @click="showCreatePlanModal = false">&times;</button>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>患者姓名 *</label>
+                        <input type="text" v-model="newPlan.patientName" placeholder="请输入患者姓名">
+                    </div>
+                    <div class="form-group">
+                        <label>身份证号 *</label>
+                        <input type="text" v-model="newPlan.patientIdCard" placeholder="请输入身份证号">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>联系电话 *</label>
+                        <input type="text" v-model="newPlan.patientPhone" placeholder="请输入联系电话">
+                    </div>
+                    <div class="form-group">
+                        <label>出院日期 *</label>
+                        <input type="date" v-model="newPlan.dischargeDate">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>病种 *</label>
+                        <input type="text" v-model="newPlan.diseaseType" placeholder="如：高血压、糖尿病">
+                    </div>
+                    <div class="form-group">
+                        <label>风险等级 *</label>
+                        <select v-model="newPlan.riskLevel">
+                            <option value="">请选择</option>
+                            <option value="HIGH">🔴 高风险</option>
+                            <option value="MEDIUM">🟡 中风险</option>
+                            <option value="LOW">🟢 低风险</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>转院状态 *</label>
+                        <select v-model="newPlan.transferStatus">
+                            <option value="NOT_TRANSFERRED">未转院</option>
+                            <option value="TRANSFERRED">已转院</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>负责护士</label>
+                        <input type="text" v-model="newPlan.assignedNurse" placeholder="负责护士姓名">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>主管医生 *</label>
+                    <input type="text" v-model="newPlan.attendingDoctor" placeholder="主管医生姓名">
+                </div>
+
+                <div class="form-group">
+                    <label>备注</label>
+                    <textarea v-model="newPlan.remarks" rows="2" placeholder="其他备注信息"></textarea>
+                </div>
+
+                <div v-if="newPlan.transferStatus === 'NOT_TRANSFERRED'" class="alert alert-warning">
+                    系统将根据风险等级自动生成随访节点：
+                    <span class="badge badge-high">高风险：3天</span>
+                    <span class="badge badge-medium">中风险：7天</span>
+                    <span class="badge badge-low">低风险：14天</span>
+                </div>
+                <div v-else class="alert alert-info">
+                    已转院患者将不会生成随访节点
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @click="showCreatePlanModal = false">取消</button>
+                    <button class="btn btn-primary" @click="createPlan" :disabled="!canCreatePlan">创建计划</button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showPlanDetail" class="modal-overlay" @click.self="showPlanDetail = false">
+            <div class="modal" style="width: 800px;">
+                <div class="modal-header">
+                    <h3>随访计划详情</h3>
+                    <button class="modal-close" @click="showPlanDetail = false">&times;</button>
+                </div>
+
+                <div v-if="selectedPlan">
+                    <div class="patient-card" style="margin-bottom: 20px;">
+                        <h3>{{ selectedPlan.patientName }}</h3>
+                        <div class="patient-info">
+                            <div><h4>病种</h4><p>{{ selectedPlan.diseaseType }}</p></div>
+                            <div><h4>风险等级</h4><p>{{ getRiskLevelText(selectedPlan.riskLevel) }}</p></div>
+                            <div><h4>出院日期</h4><p>{{ selectedPlan.dischargeDate }}</p></div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-bottom: 12px;">📅 随访节点</h4>
+                    <table v-if="selectedPlan.nodes && selectedPlan.nodes.length > 0" style="margin-bottom: 20px;">
+                        <thead>
+                            <tr>
+                                <th>序号</th>
+                                <th>随访日期</th>
+                                <th>说明</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="node in selectedPlan.nodes" :key="node.id">
+                                <td>{{ node.nodeOrder }}</td>
+                                <td>{{ node.followUpDate }}</td>
+                                <td>{{ node.description }}</td>
+                                <td>
+                                    <span v-if="node.completed" class="badge badge-completed">已完成</span>
+                                    <span v-else-if="node.cancelled" class="badge badge-closed">已取消</span>
+                                    <span v-else class="badge badge-active">待随访</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4 style="margin-bottom: 12px;">📞 随访记录</h4>
+                    <table v-if="planRecords.length > 0">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>结果</th>
+                                <th>操作人</th>
+                                <th>下次提醒</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="record in planRecords" :key="record.id">
+                                <td>{{ formatDateTime(record.createdAt) }}</td>
+                                <td>{{ getCallResultText(record.callResult) }}</td>
+                                <td>{{ record.operatorName }}</td>
+                                <td>{{ record.nextReminderDate || '-' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4 style="margin: 20px 0 12px;">⚠️ 升级历史</h4>
+                    <table v-if="planEscalations.length > 0">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>原因</th>
+                                <th>处理状态</th>
+                                <th>处理结果</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="esc in planEscalations" :key="esc.id">
+                                <td>{{ formatDateTime(esc.createdAt) }}</td>
+                                <td>{{ esc.reason }}</td>
+                                <td>
+                                    <span :class="['badge', esc.resolved ? 'badge-completed' : 'badge-escalated']">
+                                        {{ esc.resolved ? '已处理' : '待处理' }}
+                                    </span>
+                                </td>
+                                <td>{{ esc.resolution || '-' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showEscalationModal" class="modal-overlay" @click.self="showEscalationModal = false">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>处理升级 - {{ selectedPlanForEscalation?.patientName }}</h3>
+                    <button class="modal-close" @click="showEscalationModal = false">&times;</button>
+                </div>
+
+                <div v-if="selectedPlanForEscalation" class="alert alert-warning" style="margin-bottom: 20px;">
+                    该患者已连续未接通 {{ selectedPlanForEscalation.consecutiveMissed }} 次，需要医生处理。
+                </div>
+
+                <div class="form-group">
+                    <label>医生意见 *</label>
+                    <textarea v-model="resolveEscalation.doctorNote" rows="3" placeholder="请输入医生处理意见"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>处理结果 *</label>
+                    <select v-model="resolveEscalation.resolution">
+                        <option value="">请选择</option>
+                        <option value="继续随访">继续随访 - 恢复随访计划</option>
+                        <option value="关闭计划">关闭计划 - 终止随访</option>
+                        <option value="再次联系">再次联系 - 保留升级状态</option>
+                    </select>
+                </div>
+
+                <div class="form-group checkbox-group" v-if="resolveEscalation.resolution === '继续随访'">
+                    <input type="checkbox" id="resumeFollowUp" v-model="resolveEscalation.resumeFollowUp">
+                    <label for="resumeFollowUp" style="margin-bottom: 0;">恢复随访计划（重置连续未接通计数）</label>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @click="showEscalationModal = false">取消</button>
+                    <button class="btn btn-primary" @click="submitResolveEscalation" :disabled="!canResolveEscalation">
+                        提交处理
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch } = Vue;
+
+        const API_BASE = 'http://localhost:8080/api';
+
+        createApp({
+            setup() {
+                const currentPage = ref('plans');
+                const alertMessage = ref('');
+                const alertType = ref('success');
+
+                const planSearch = ref('');
+                const planStatusFilter = ref('');
+                const plans = ref([]);
+                const activePlans = ref([]);
+                const escalatedPlans = ref([]);
+
+                const showCreatePlanModal = ref(false);
+                const newPlan = ref({
+                    patientName: '',
+                    patientIdCard: '',
+                    patientPhone: '',
+                    dischargeDate: '',
+                    diseaseType: '',
+                    riskLevel: '',
+                    transferStatus: 'NOT_TRANSFERRED',
+                    attendingDoctor: '',
+                    assignedNurse: '',
+                    remarks: ''
+                });
+
+                const showPlanDetail = ref(false);
+                const selectedPlan = ref(null);
+                const planRecords = ref([]);
+                const planEscalations = ref([]);
+
+                const newRecord = ref({
+                    planId: '',
+                    nodeId: '',
+                    callResult: '',
+                    noAnswerReason: '',
+                    conversationContent: '',
+                    nextReminderDate: '',
+                    nextReminderNote: '',
+                    needExamReport: false,
+                    examReportNote: '',
+                    operatorName: ''
+                });
+                const pendingNodes = ref([]);
+                const recentRecords = ref([]);
+                const dateError = ref('');
+
+                const reminderFilter = ref('today');
+                const todayReminders = ref([]);
+                const weekReminders = ref([]);
+
+                const allEscalations = ref([]);
+                const showEscalationModal = ref(false);
+                const selectedPlanForEscalation = ref(null);
+                const resolveEscalation = ref({
+                    doctorNote: '',
+                    resolution: '',
+                    resumeFollowUp: true
+                });
+                const activeEscalationId = ref(null);
+
+                const patientIdCard = ref('');
+                const patientInfo = ref(null);
+
+                const showAlert = (message, type = 'success') => {
+                    alertMessage.value = message;
+                    alertType.value = type;
+                    setTimeout(() => alertMessage.value = '', 3000);
+                };
+
+                const getRiskLevelText = (level) => {
+                    const map = { HIGH: '高风险', MEDIUM: '中风险', LOW: '低风险' };
+                    return map[level] || level;
+                };
+
+                const getPlanStatusText = (status) => {
+                    const map = { ACTIVE: '进行中', ESCALATED: '已升级', COMPLETED: '已完成', CLOSED: '已关闭', CANCELLED: '已取消' };
+                    return map[status] || status;
+                };
+
+                const getCallResultText = (result) => {
+                    const map = { CONNECTED: '已接通', NO_ANSWER: '无人接听', BUSY: '占线', WRONG_NUMBER: '号码错误', REFUSED: '拒绝接听' };
+                    return map[result] || result;
+                };
+
+                const formatDateTime = (dateStr) => {
+                    if (!dateStr) return '-';
+                    return new Date(dateStr).toLocaleString('zh-CN');
+                };
+
+                const getPlanName = (planId) => {
+                    const plan = plans.value.find(p => p.id === planId);
+                    return plan ? plan.patientName : '未知';
+                };
+
+                const filteredPlans = computed(() => {
+                    return plans.value.filter(p => {
+                        const matchSearch = !planSearch.value || 
+                            p.patientName.includes(planSearch.value) || 
+                            p.patientIdCard.includes(planSearch.value);
+                        const matchStatus = !planStatusFilter.value || p.status === planStatusFilter.value;
+                        return matchSearch && matchStatus;
+                    });
+                });
+
+                const currentReminders = computed(() => {
+                    return reminderFilter.value === 'today' ? todayReminders.value : weekReminders.value;
+                });
+
+                const canCreatePlan = computed(() => {
+                    return newPlan.value.patientName && 
+                           newPlan.value.patientIdCard && 
+                           newPlan.value.patientPhone && 
+                           newPlan.value.dischargeDate && 
+                           newPlan.value.diseaseType && 
+                           newPlan.value.riskLevel &&
+                           newPlan.value.attendingDoctor;
+                });
+
+                const canSubmitRecord = computed(() => {
+                    if (!newRecord.value.planId || !newRecord.value.callResult || !newRecord.value.operatorName) {
+                        return false;
+                    }
+                    if (newRecord.value.nextReminderDate && dateError.value) {
+                        return false;
+                    }
+                    return true;
+                });
+
+                const canResolveEscalation = computed(() => {
+                    return resolveEscalation.value.doctorNote && resolveEscalation.value.resolution;
+                });
+
+                const fetchPlans = async () => {
+                    try {
+                        const res = await axios.get(`${API_BASE}/plans`);
+                        plans.value = res.data.data || [];
+                        activePlans.value = plans.value.filter(p => 
+                            p.status === 'ACTIVE' && p.transferStatus === 'NOT_TRANSFERRED'
+                        );
+                        escalatedPlans.value = plans.value.filter(p => p.status === 'ESCALATED');
+                    } catch (e) {
+                        showAlert('获取计划列表失败', 'error');
+                    }
+                };
+
+                const fetchRecords = async () => {
+                    try {
+                        const res = await axios.get(`${API_BASE}/records`);
+                        recentRecords.value = (res.data.data || []).slice(0, 10);
+                    } catch (e) {
+                        console.error('获取记录失败', e);
+                    }
+                };
+
+                const fetchReminders = async () => {
+                    try {
+                        const [todayRes, weekRes] = await Promise.all([
+                            axios.get(`${API_BASE}/records/reminders/today`),
+                            axios.get(`${API_BASE}/records/reminders/week`)
+                        ]);
+                        todayReminders.value = todayRes.data.data || [];
+                        weekReminders.value = weekRes.data.data || [];
+                    } catch (e) {
+                        console.error('获取提醒失败', e);
+                    }
+                };
+
+                const fetchEscalations = async () => {
+                    try {
+                        const res = await axios.get(`${API_BASE}/escalations`);
+                        allEscalations.value = res.data.data || [];
+                    } catch (e) {
+                        console.error('获取升级记录失败', e);
+                    }
+                };
+
+                const onPlanChange = async () => {
+                    pendingNodes.value = [];
+                    newRecord.value.nodeId = '';
+                    dateError.value = '';
+                    if (newRecord.value.planId) {
+                        try {
+                            const res = await axios.get(`${API_BASE}/nodes/plan/${newRecord.value.planId}/pending`);
+                            pendingNodes.value = res.data.data || [];
+                        } catch (e) {
+                            console.error('获取节点失败', e);
+                        }
+                    }
+                };
+
+                watch(() => newRecord.value.nextReminderDate, (newDate) => {
+                    dateError.value = '';
+                    if (newDate && newRecord.value.planId) {
+                        const plan = plans.value.find(p => p.id == newRecord.value.planId);
+                        if (plan && new Date(newDate) < new Date(plan.dischargeDate)) {
+                            dateError.value = '复诊日期不能早于出院日期！';
+                        }
+                    }
+                });
+
+                const createPlan = async () => {
+                    try {
+                        const dischargeDate = new Date(newPlan.value.dischargeDate);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        if (dischargeDate > today) {
+                            showAlert('出院日期不能晚于当前日期', 'error');
+                            return;
+                        }
+
+                        const res = await axios.post(`${API_BASE}/plans`, newPlan.value);
+                        showAlert('随访计划创建成功！');
+                        showCreatePlanModal.value = false;
+                        newPlan.value = {
+                            patientName: '', patientIdCard: '', patientPhone: '',
+                            dischargeDate: '', diseaseType: '', riskLevel: '',
+                            transferStatus: 'NOT_TRANSFERRED', attendingDoctor: '',
+                            assignedNurse: '', remarks: ''
+                        };
+                        fetchPlans();
+                    } catch (e) {
+                        showAlert(e.response?.data?.message || '创建失败', 'error');
+                    }
+                };
+
+                const submitRecord = async () => {
+                    try {
+                        const res = await axios.post(`${API_BASE}/records`, newRecord.value);
+                        showAlert('随访记录提交成功！');
+                        newRecord.value = {
+                            planId: '', nodeId: '', callResult: '',
+                            noAnswerReason: '', conversationContent: '',
+                            nextReminderDate: '', nextReminderNote: '',
+                            needExamReport: false, examReportNote: '', operatorName: ''
+                        };
+                        pendingNodes.value = [];
+                        dateError.value = '';
+                        fetchPlans();
+                        fetchRecords();
+                        fetchReminders();
+                        fetchEscalations();
+                    } catch (e) {
+                        showAlert(e.response?.data?.message || '提交失败', 'error');
+                    }
+                };
+
+                const viewPlanDetail = async (plan) => {
+                    selectedPlan.value = plan;
+                    planRecords.value = [];
+                    planEscalations.value = [];
+                    showPlanDetail.value = true;
+                    try {
+                        const [recordsRes, escRes] = await Promise.all([
+                            axios.get(`${API_BASE}/records/plan/${plan.id}`),
+                            axios.get(`${API_BASE}/escalations/plan/${plan.id}/history`)
+                        ]);
+                        planRecords.value = recordsRes.data.data || [];
+                        planEscalations.value = escRes.data.data || [];
+                    } catch (e) {
+                        console.error('获取详情失败', e);
+                    }
+                };
+
+                const quickRecord = (plan) => {
+                    currentPage.value = 'records';
+                    newRecord.value.planId = plan.id;
+                    onPlanChange();
+                };
+
+                const handleEscalation = async (plan) => {
+                    selectedPlanForEscalation.value = plan;
+                    resolveEscalation.value = {
+                        doctorNote: '',
+                        resolution: '',
+                        resumeFollowUp: true
+                    };
+                    try {
+                        const res = await axios.get(`${API_BASE}/escalations/plan/${plan.id}/active`);
+                        if (res.data.data) {
+                            activeEscalationId.value = res.data.data.id;
+                        }
+                    } catch (e) {
+                        activeEscalationId.value = null;
+                    }
+                    showEscalationModal.value = true;
+                };
+
+                const viewEscalationDetail = (escalation) => {
+                    const plan = plans.value.find(p => p.id === escalation.planId);
+                    if (plan) {
+                        handleEscalation(plan);
+                    }
+                };
+
+                const submitResolveEscalation = async () => {
+                    try {
+                        const payload = {
+                            escalationId: activeEscalationId.value,
+                            doctorNote: resolveEscalation.value.doctorNote,
+                            resolution: resolveEscalation.value.resolution,
+                            resumeFollowUp: resolveEscalation.value.resolution === '继续随访' ? 
+                                resolveEscalation.value.resumeFollowUp : false
+                        };
+                        await axios.post(`${API_BASE}/escalations/resolve`, payload);
+                        showAlert('升级处理成功！');
+                        showEscalationModal.value = false;
+                        fetchPlans();
+                        fetchEscalations();
+                    } catch (e) {
+                        showAlert(e.response?.data?.message || '处理失败', 'error');
+                    }
+                };
+
+                const queryPatient = async () => {
+                    if (!patientIdCard.value) {
+                        showAlert('请输入身份证号', 'error');
+                        return;
+                    }
+                    try {
+                        const res = await axios.get(`${API_BASE}/patient/${patientIdCard.value}`);
+                        patientInfo.value = res.data.data;
+                    } catch (e) {
+                        showAlert(e.response?.data?.message || '未找到患者随访信息', 'error');
+                        patientInfo.value = null;
+                    }
+                };
+
+                onMounted(() => {
+                    fetchPlans();
+                    fetchRecords();
+                    fetchReminders();
+                    fetchEscalations();
+                });
+
+                return {
+                    currentPage, alertMessage, alertType,
+                    planSearch, planStatusFilter, plans, activePlans, escalatedPlans,
+                    showCreatePlanModal, newPlan,
+                    showPlanDetail, selectedPlan, planRecords, planEscalations,
+                    newRecord, pendingNodes, recentRecords, dateError,
+                    reminderFilter, todayReminders, weekReminders,
+                    allEscalations, showEscalationModal, selectedPlanForEscalation, resolveEscalation,
+                    patientIdCard, patientInfo,
+                    filteredPlans, currentReminders, canCreatePlan, canSubmitRecord, canResolveEscalation,
+                    getRiskLevelText, getPlanStatusText, getCallResultText, formatDateTime, getPlanName,
+                    createPlan, submitRecord, viewPlanDetail, quickRecord,
+                    handleEscalation, viewEscalationDetail, submitResolveEscalation,
+                    queryPatient, onPlanChange
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
