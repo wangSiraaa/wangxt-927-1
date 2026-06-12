@@ -11,6 +11,7 @@ import com.clinic.followup.enums.TransferStatus;
 import com.clinic.followup.exception.BusinessException;
 import com.clinic.followup.exception.ResourceNotFoundException;
 import com.clinic.followup.repository.FollowUpRecordRepository;
+import com.clinic.followup.service.EscalationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
@@ -29,15 +30,18 @@ public class FollowUpRecordService {
     private final FollowUpRecordRepository recordRepository;
     private final FollowUpPlanService planService;
     private final FollowUpNodeService nodeService;
+    private final EscalationService escalationService;
     private final FollowUpConfig config;
 
     public FollowUpRecordService(FollowUpRecordRepository recordRepository,
                                  FollowUpPlanService planService,
                                  FollowUpNodeService nodeService,
+                                 EscalationService escalationService,
                                  FollowUpConfig config) {
         this.recordRepository = recordRepository;
         this.planService = planService;
         this.nodeService = nodeService;
+        this.escalationService = escalationService;
         this.config = config;
     }
 
@@ -84,17 +88,28 @@ public class FollowUpRecordService {
             }
         }
 
-        updatePlanStatusAfterRecord(plan, request.getCallResult());
+        processPlanStatusAfterRecord(plan, request.getCallResult(), request.getOperatorName(),
+                request.getNextReminderDate());
 
         return recordRepository.save(record);
     }
 
-    private void updatePlanStatusAfterRecord(FollowUpPlan plan, CallResult callResult) {
+    private void processPlanStatusAfterRecord(FollowUpPlan plan, CallResult callResult,
+                                               String operatorName, LocalDate nextReminderDate) {
         if (callResult == CallResult.CONNECTED) {
-            planService.resetConsecutiveMissed(plan);
-            if (plan.getStatus() == PlanStatus.ESCALATED) {
-                log.info("Patient {} reconnected after escalation, resuming follow-up but keeping escalation history",
-                        plan.getPatientName());
+            boolean wasEscalated = (plan.getStatus() == PlanStatus.ESCALATED);
+
+            if (wasEscalated) {
+                escalationService.autoResolveOnReconnect(plan.getId(), operatorName);
+
+                plan.setStatus(PlanStatus.ACTIVE);
+                plan.setConsecutiveMissed(0);
+
+                log.info("Plan {} resumed from ESCALATED to ACTIVE after patient {} reconnected by operator {}, " +
+                                "next follow-up: nextReminderDate={} or next pending follow-up node",
+                        plan.getId(), plan.getPatientName(), operatorName, nextReminderDate);
+            } else {
+                planService.resetConsecutiveMissed(plan);
             }
         } else {
             planService.incrementConsecutiveMissed(plan);

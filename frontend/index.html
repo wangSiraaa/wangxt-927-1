@@ -204,7 +204,7 @@
                                 <select v-model="newRecord.planId" @change="onPlanChange">
                                     <option value="">请选择计划</option>
                                     <option v-for="plan in activePlans" :key="plan.id" :value="plan.id">
-                                        {{ plan.patientName }} - {{ plan.diseaseType }}
+                                        {{ plan.patientName }} - {{ plan.diseaseType }}{{ plan.status === 'ESCALATED' ? ' (已升级)' : '' }}
                                     </option>
                                 </select>
                             </div>
@@ -406,7 +406,7 @@
                                             {{ escalation.resolved ? '已处理' : '待处理' }}
                                         </span>
                                     </td>
-                                    <td>{{ escalation.resolution || '-' }}</td>
+                                    <td>{{ getResolutionText(escalation.resolution) }}</td>
                                     <td>
                                         <button v-if="!escalation.resolved" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;"
                                                 @click="viewEscalationDetail(escalation)">
@@ -455,6 +455,14 @@
                                     <h4>主管医生</h4>
                                     <p>{{ patientInfo.attendingDoctor }}</p>
                                 </div>
+                            </div>
+                            <div style="margin-top: 12px; display: flex; gap: 8px; align-items: center;">
+                                <span :class="['badge', patientInfo.planStatus === 'ACTIVE' ? 'badge-active' : (patientInfo.planStatus === 'ESCALATED' ? 'badge-escalated' : 'badge-closed')]">
+                                    {{ getPlanStatusText(patientInfo.planStatus) }}
+                                </span>
+                                <span v-if="patientInfo.hasEscalationHistory" class="badge" style="background: #fef3c7; color: #92400e;">
+                                    曾升级处理（已恢复随访）
+                                </span>
                             </div>
                         </div>
 
@@ -647,7 +655,7 @@
                                         {{ esc.resolved ? '已处理' : '待处理' }}
                                     </span>
                                 </td>
-                                <td>{{ esc.resolution || '-' }}</td>
+                                <td>{{ getResolutionText(esc.resolution) }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -786,6 +794,17 @@
                     return map[result] || result;
                 };
 
+                const getResolutionText = (resolution) => {
+                    if (!resolution) return '-';
+                    const map = {
+                        'AUTO_RESUME_ON_RECONNECT': '患者重新接通-自动恢复随访',
+                        '继续随访': '继续随访',
+                        '关闭计划': '关闭计划',
+                        '再次联系': '再次联系'
+                    };
+                    return map[resolution] || resolution;
+                };
+
                 const formatDateTime = (dateStr) => {
                     if (!dateStr) return '-';
                     return new Date(dateStr).toLocaleString('zh-CN');
@@ -839,7 +858,7 @@
                         const res = await axios.get(`${API_BASE}/plans`);
                         plans.value = res.data.data || [];
                         activePlans.value = plans.value.filter(p => 
-                            p.status === 'ACTIVE' && p.transferStatus === 'NOT_TRANSFERRED'
+                            (p.status === 'ACTIVE' || p.status === 'ESCALATED') && p.transferStatus === 'NOT_TRANSFERRED'
                         );
                         escalatedPlans.value = plans.value.filter(p => p.status === 'ESCALATED');
                     } catch (e) {
@@ -1046,7 +1065,7 @@
                     allEscalations, showEscalationModal, selectedPlanForEscalation, resolveEscalation,
                     patientIdCard, patientInfo,
                     filteredPlans, currentReminders, canCreatePlan, canSubmitRecord, canResolveEscalation,
-                    getRiskLevelText, getPlanStatusText, getCallResultText, formatDateTime, getPlanName,
+                    getRiskLevelText, getPlanStatusText, getCallResultText, getResolutionText, formatDateTime, getPlanName,
                     createPlan, submitRecord, viewPlanDetail, quickRecord,
                     handleEscalation, viewEscalationDetail, submitResolveEscalation,
                     queryPatient, onPlanChange

@@ -17,6 +17,8 @@ public class PatientFollowUpVO {
     private String assignedNurse;
     private LocalDateTime lastContactTime;
     private String lastContactResult;
+    private String planStatus;
+    private boolean hasEscalationHistory;
 
     public Long getPlanId() { return planId; }
     public void setPlanId(Long planId) { this.planId = planId; }
@@ -44,4 +46,8 @@ public class PatientFollowUpVO {
     public void setLastContactTime(LocalDateTime lastContactTime) { this.lastContactTime = lastContactTime; }
     public String getLastContactResult() { return lastContactResult; }
     public void setLastContactResult(String lastContactResult) { this.lastContactResult = lastContactResult; }
+    public String getPlanStatus() { return planStatus; }
+    public void setPlanStatus(String planStatus) { this.planStatus = planStatus; }
+    public boolean isHasEscalationHistory() { return hasEscalationHistory; }
+    public void setHasEscalationHistory(boolean hasEscalationHistory) { this.hasEscalationHistory = hasEscalationHistory; }
 }

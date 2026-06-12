@@ -140,4 +140,31 @@ public class EscalationService {
     public List<EscalationHistory> getEscalationHistoryForPlan(Long planId) {
         return escalationRepository.findAllEscalationHistoryForPlan(planId);
     }
+
+    @Transactional
+    public Optional<EscalationHistory> autoResolveOnReconnect(Long planId, String operatorName) {
+        Optional<EscalationHistory> activeEscalationOpt = escalationRepository.findActiveEscalation(planId);
+        if (activeEscalationOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        EscalationHistory escalation = activeEscalationOpt.get();
+        if (escalation.isResolved()) {
+            return Optional.empty();
+        }
+
+        escalation.setResolved(true);
+        escalation.setResolvedAt(LocalDateTime.now());
+        escalation.setDoctorNote(escalation.getDoctorNote() == null
+                ? "患者重新接通，由" + (operatorName != null ? operatorName : "护士") + "自动恢复随访"
+                : escalation.getDoctorNote() + "; 患者重新接通，由" + (operatorName != null ? operatorName : "护士") + "自动恢复随访");
+        escalation.setResolution("AUTO_RESUME_ON_RECONNECT");
+
+        escalationRepository.save(escalation);
+
+        log.info("Escalation {} auto-resolved on reconnect by operator {}, plan {} will be resumed to active by caller",
+                escalation.getId(), operatorName, planId);
+
+        return Optional.of(escalation);
+    }
 }

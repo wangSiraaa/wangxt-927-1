@@ -1,11 +1,13 @@
 package com.clinic.followup.service;
 
 import com.clinic.followup.dto.PatientFollowUpVO;
+import com.clinic.followup.entity.EscalationHistory;
 import com.clinic.followup.entity.FollowUpNode;
 import com.clinic.followup.entity.FollowUpPlan;
 import com.clinic.followup.entity.FollowUpRecord;
 import com.clinic.followup.enums.TransferStatus;
 import com.clinic.followup.exception.ResourceNotFoundException;
+import com.clinic.followup.repository.EscalationHistoryRepository;
 import com.clinic.followup.repository.FollowUpPlanRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,13 +28,16 @@ public class PatientQueryService {
     private final FollowUpPlanRepository planRepository;
     private final FollowUpNodeService nodeService;
     private final FollowUpRecordService recordService;
+    private final EscalationHistoryRepository escalationHistoryRepository;
 
     public PatientQueryService(FollowUpPlanRepository planRepository,
                                FollowUpNodeService nodeService,
-                               FollowUpRecordService recordService) {
+                               FollowUpRecordService recordService,
+                               EscalationHistoryRepository escalationHistoryRepository) {
         this.planRepository = planRepository;
         this.nodeService = nodeService;
         this.recordService = recordService;
+        this.escalationHistoryRepository = escalationHistoryRepository;
     }
 
     @Transactional(readOnly = true)
@@ -75,6 +80,11 @@ public class PatientQueryService {
         vo.setDischargeDate(plan.getDischargeDate());
         vo.setAttendingDoctor(plan.getAttendingDoctor());
         vo.setAssignedNurse(plan.getAssignedNurse());
+        vo.setPlanStatus(plan.getStatus().name());
+
+        List<EscalationHistory> escalationHistories =
+                escalationHistoryRepository.findAllEscalationHistoryForPlan(plan.getId());
+        vo.setHasEscalationHistory(!escalationHistories.isEmpty());
 
         Optional<FollowUpNode> nextNode = nodeService.getNextPendingNode(plan.getId());
         if (nextNode.isPresent()) {
